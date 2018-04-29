@@ -1,17 +1,24 @@
 #pragma once
 #include <vector>
 #include <array>
-#define block_t array<byte,128>
-#define key_t array<byte,256>
+#include <random>
+
 typedef  unsigned char byte;
 using namespace std;
 
 class Kuznechik
 {
 private:
-	const int BLOCK_SIZE = 128;
-	const int KEY_SIZE = 256;
-	const byte kuz_pi[0x100] = {
+	static const int BLOCK_SIZE = 16;//128 бит
+
+	static const int KEY_SIZE = 32;//256 бит
+	using block_t=array<byte, BLOCK_SIZE>;
+	using key_t=array<byte, KEY_SIZE>;
+	const byte l_vec[16] = {
+		148,32,133,16,194,192,1,251,1,192,194,16,133,32,148,1
+	};
+
+	const byte pi[0x100] = {
 		0xFC, 0xEE, 0xDD, 0x11, 0xCF, 0x6E, 0x31, 0x16, 	// 00..07
 		0xFB, 0xC4, 0xFA, 0xDA, 0x23, 0xC5, 0x04, 0x4D, 	// 08..0F
 		0xE9, 0x77, 0xF0, 0xDB, 0x93, 0x2E, 0x99, 0xBA, 	// 10..17
@@ -46,7 +53,7 @@ private:
 		0xD1, 0x66, 0xAF, 0xC2, 0x39, 0x4B, 0x63, 0xB6, 	// F8..FF
 	};
 
-	const byte kuz_pi_inv[0x100] = {
+	const byte pi_inv[0x100] = {
 		0xA5, 0x2D, 0x32, 0x8F, 0x0E, 0x30, 0x38, 0xC0, 	// 00..07
 		0x54, 0xE6, 0x9E, 0x39, 0x55, 0x7E, 0x52, 0x91, 	// 08..0F
 		0x64, 0x03, 0x57, 0x5A, 0x1C, 0x60, 0x07, 0x18, 	// 10..17
@@ -80,17 +87,207 @@ private:
 		0x12, 0x1A, 0x48, 0x68, 0xF5, 0x81, 0x8B, 0xC7, 	// F0..F7
 		0xD6, 0x20, 0x0A, 0x08, 0x00, 0x4C, 0xD7, 0x74	 	// F8..FF
 	};
+
+	/*
+	Переводит 32-разрядное число в массив из 4-х байт
+	*/
+	byte* ToByteArray(uint32_t n)
+	{
+		byte* result = new byte[4];
+		for (int i = 0; i < 4; i++)
+		{
+			byte b;
+			b = n >> (4 - i)-1;
+			result[i] = b;
+		}
+		return result;
+	}
+
 public:
 
-	byte* Encrypt(byte* data)
+	byte* Encrypt(byte* data,int dataLength)
 	{
+		//Инициализация генератора случайных чисел
+		int max_val = pow(2, 8) - 1;//случайный байт
+		std::random_device rd;
+		std::mt19937 gen(rd);
+		std::uniform_int_distribution<> dis(0, max_val);
+		int blocks_num=dataLength/BLOCK_SIZE;//кол-во блоков
+		int bytes_left = dataLength%BLOCK_SIZE;
+		if (bytes_left != 0)
+		{
+			blocks_num++;
+		}
+		block_t* data_blocks = new block_t[blocks_num];
+		//Если кол-во байт не кратно размеру блока, то взять остаток и дополнить нулями
+		for (int i = 0; i < dataLength; i++)
+		{
+			int index = dataLength*BLOCK_SIZE;
+			if (index + BLOCK_SIZE < BLOCK_SIZE)
+			{
+				for (int j = index; j < BLOCK_SIZE; j++)
+				{
+
+				}
+			}
+		}
+		block_t gamma_block;//С ним будет ксориться блок данных
+	
+
+		/*Гаммирование*/
+		//uint32_t n = dis(gen)<<128;//первая половина--128-битное случайное число
+		//Заполнить первые 64 бита(8 байт)
+		
+		for (int i = 0; i < BLOCK_SIZE/2; i++)
+		{
+			byte rand_byte = dis(gen);
+			gamma_block[i] = rand_byte;
+		}
+
 		
 	}
 	
+	/*
+	Развертывание раундовых ключей
+	*/
+	key_t* GetRoundKeys(key_t k)
+	{
+		block_t c[32];//итерационнные константы
+		for (int i = 1; i <= 32; i++)
+		{
+			block_t vi;
+			std::fill(vi.begin(), vi.end(), i);//Заполнить значениями i
+			c[i] = L(vi);
+		}
+		/*Первые два ключа создаются делением пополам*/
+		key_t k1;
+		for (int i = KEY_SIZE/2; i<KEY_SIZE; i++)
+		{
+			k1[i] = k[i];
+		}
+		key_t k2;
+		for (int j = 0; j < KEY_SIZE / 2; j++)
+		{
+			k2[j] = k[j];
+		}
+		for (int i = 1; i < 4; i++)
+		{
+
+		}
+	}
+
+
+
+	/*
+	Умножение чисел в поле Галуа над x^8+x^7+x^6+x+1
+	*/
+	byte GF_mul(byte a, byte b)
+	{
+		uint8_t c = 0;
+		uint8_t hi_bit;
+		int i;
+		for (i = 0; i < 8; i++)
+		{
+			if (b & 1)
+				c ^= a;
+			hi_bit = a & 0x80;
+			a <<= 1;
+			if (hi_bit)
+				a ^= 0xc3; // Полином x^8 + x^7 + x^6 + x + 1
+			b >>= 1;
+		}
+		return c;
+	}
+
+	block_t* F(block_t k,block_t a_0,block_t a_1)
+	{
+		block_t lsx = L(S((X(k, a_1))));
+		block_t f[2] = { X(lsx,a_0),a_1 };
+		return f;
+	}
+
+	block_t X(block_t k, block_t a)
+	{
+		block_t x;
+		for (int i = 0; i < BLOCK_SIZE; i++)
+		{
+			x[i] = k[i] ^ a[i];
+		}
+		return x;
+	}
+
+	block_t S(block_t a)
+	{
+		block_t s;
+		for (int i = 0; i < BLOCK_SIZE; i++)
+		{
+			s[i] = pi[a[i]];
+		}
+		return s;
+	}
+
+	block_t S_inv(block_t a)
+	{
+		block_t s_inv;
+		for (int i = 0; i < BLOCK_SIZE; i++)
+		{
+			s_inv[i] = pi_inv[a[i]];
+		}
+	}
+
+	block_t R(block_t a)
+	{
+		block_t r;
+		byte a_15 = 0;
+		for (int i = 15; i >= 0; i--)
+		{
+			r[i - 1] = a[i];
+			a_15 ^= GF_mul(a[i], l_vec[i]);
+		}
+		r[BLOCK_SIZE - 1] = a_15;//рез-т сложения в последний байт
+		return r;
+	}
+	
+	block_t L(block_t a)
+	{
+		block_t l = a;
+		for (int i = 0; i < 16; i++)
+		{
+			l = R(l);//16 раз повторить преобразование R
+		}
+		return l;
+	}
+
+	block_t L_inv(block_t a)
+	{
+		block_t l_inv = a;
+		for (int i = 0; i < 16; i++)
+		{
+			l_inv = R_inv(l_inv);
+		}
+		return l_inv;
+	}
+
+	block_t R_inv(block_t a)
+	{
+		int i;
+		uint8_t a_0;
+		a_0 = a[15];
+		block_t r_inv;
+		for (i = 0; i < 16; i++)
+		{
+			r_inv[i] = a[i - 1];// Двигаем все на старые места
+			a_0 ^= GF_mul(a[i], l_vec[i]);
+		}
+		a[0] = a_0;
+		return r_inv;
+	}
+
 	block_t EncryptBlock(block_t data, key_t key)
 	{
 
 	}
+
 
 
 	Kuznechik()
