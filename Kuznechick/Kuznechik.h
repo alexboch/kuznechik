@@ -10,9 +10,10 @@ class Kuznechik
 {
 private:
 	static const int BLOCK_SIZE = 16;//128 бит
-
+	
 	static const int KEY_SIZE = 32;//256 бит
 	using block_t=array<byte, BLOCK_SIZE>;
+	vector<block_t> gamma_blocks;
 	using key_t=array<byte, KEY_SIZE>;
 	const byte l_vec[16] = {
 		148,32,133,16,194,192,1,251,1,192,194,16,133,32,148,1
@@ -88,6 +89,33 @@ private:
 		0xD6, 0x20, 0x0A, 0x08, 0x00, 0x4C, 0xD7, 0x74	 	// F8..FF
 	};
 
+	/*Прибавляет 1 к массиву из 16 байт*/
+	block_t Increment(block_t block)
+	{
+		block_t result = block;
+		int remain = 0;
+		do
+		{
+			for (int i = block.size() - 1; i >= 0; i--)
+			{
+				byte b = result[i];
+				if (b < 255)
+				{
+					result[i]++;
+					remain = 0;
+					break;
+				}
+				else 
+				{
+					result[i] = 0;
+					remain = 1;
+				}
+			}
+		}
+		while (remain != 0);
+		return result;
+	}
+
 	/*
 	Переводит 32-разрядное число в массив из 4-х байт
 	*/
@@ -109,8 +137,9 @@ public:
 	{
 		//Инициализация генератора случайных чисел
 		int max_val = pow(2, 8) - 1;//случайный байт
+
 		std::random_device rd;
-		std::mt19937 gen(rd);
+		std::mt19937 gen(rd());
 		std::uniform_int_distribution<> dis(0, max_val);
 		int blocks_num=dataLength/BLOCK_SIZE;//кол-во блоков
 		int bytes_left = dataLength%BLOCK_SIZE;
@@ -119,17 +148,27 @@ public:
 			blocks_num++;
 		}
 		block_t* data_blocks = new block_t[blocks_num];
-		//Если кол-во байт не кратно размеру блока, то взять остаток и дополнить нулями
-		for (int i = 0; i < dataLength; i++)
-		{
-			int index = dataLength*BLOCK_SIZE;
-			if (index + BLOCK_SIZE < BLOCK_SIZE)
-			{
-				for (int j = index; j < BLOCK_SIZE; j++)
-				{
 
+		for (int i = 0; i < dataLength; i+=BLOCK_SIZE)
+		{
+			int bytes_left = dataLength - i;
+			int block_index = i / BLOCK_SIZE;
+			if (bytes_left>BLOCK_SIZE)
+			{
+				for (int j = 0; j < BLOCK_SIZE; j++)
+				{
+					data_blocks[block_index][BLOCK_SIZE-j-1] = data[i + j];
 				}
 			}
+			else//Если кол-во байт не кратно размеру блока, то взять остаток и дополнить нулями
+			{
+				data_blocks[block_index].fill(0);//заполнить нулями
+				for (int k = BLOCK_SIZE - 1, k1=0;k>=BLOCK_SIZE-bytes_left; k--,k1++)
+				{
+					data_blocks[block_index][k] = data[dataLength - k1-1];
+				}
+			}
+
 		}
 		block_t gamma_block;//С ним будет ксориться блок данных
 	
@@ -144,34 +183,59 @@ public:
 			gamma_block[i] = rand_byte;
 		}
 
-		
+		gamma_blocks.push_back(gamma_block);
+		for (int i = 0; i < blocks_num; i++)
+		{
+			for (int j = 0; j < BLOCK_SIZE; j++)
+			{
+				data_blocks[i][j] ^= gamma_block[j];
+			}
+			gamma_block = Increment(gamma_block);
+			gamma_blocks.push_back(gamma_block);//Запомнить, чтобы потом расшифровать
+		}
+		return 0;
 	}
 	
+	key_t MakeKey(block_t left_key, block_t right_key)
+	{
+		key_t k;
+		
+	}
+
 	/*
 	Развертывание раундовых ключей
 	*/
-	key_t* GetRoundKeys(key_t k)
+	vector<array<block_t,2>> GetRoundKeys(key_t k)
 	{
 		block_t c[32];//итерационнные константы
-		for (int i = 1; i <= 32; i++)
+		key_t keys[10];
+		for (int i = 1; i <= 32; i++)//Счетчиковая последовательность
 		{
 			block_t vi;
 			std::fill(vi.begin(), vi.end(), i);//Заполнить значениями i
 			c[i] = L(vi);
 		}
 		/*Первые два ключа создаются делением пополам*/
-		key_t k1;
+		block_t k1;
 		for (int i = KEY_SIZE/2; i<KEY_SIZE; i++)
 		{
 			k1[i] = k[i];
 		}
-		key_t k2;
+		block_t k2;
 		for (int j = 0; j < KEY_SIZE / 2; j++)
 		{
 			k2[j] = k[j];
 		}
-		for (int i = 1; i < 4; i++)
+		
+		for (int i = 0; i < 4; i++)
 		{
+			block_t round_key = c[i];
+			for (int j = 0; j < 8; j++)//8 итераций сети Фейстеля
+			{
+				block_t* x = F(c[i+j], k1,k2);
+				k1 = x[0];
+				k2 = x[1];
+			}
 
 		}
 	}
@@ -199,13 +263,6 @@ public:
 		return c;
 	}
 
-	block_t* F(block_t k,block_t a_0,block_t a_1)
-	{
-		block_t lsx = L(S((X(k, a_1))));
-		block_t f[2] = { X(lsx,a_0),a_1 };
-		return f;
-	}
-
 	block_t X(block_t k, block_t a)
 	{
 		block_t x;
@@ -215,6 +272,22 @@ public:
 		}
 		return x;
 	}
+
+	block_t* F(block_t k,block_t a_1,block_t a_0)
+	{
+		block_t lsx = L(S((X(k, a_1))));
+		for (int i = 0; i < BLOCK_SIZE; i++)
+		{
+			lsx[i] ^= a_0[i];
+		}
+
+		//block_t f[2] = { X(lsx,a_0),a_1 };
+		//block_t f = X(lsx, a_1);
+		block_t f[2] = { lsx,a_1 };
+		return f;
+	}
+
+	
 
 	block_t S(block_t a)
 	{
