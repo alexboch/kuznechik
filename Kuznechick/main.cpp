@@ -26,13 +26,15 @@ int main()
 {
 	key_t master_key=GenerateMasterKey();
 	Kuznechik kz(master_key);
-	const int data_size = 25;
-	byte data[data_size];
+	
+	char* data = "A short test message";
+	int data_size = strlen(data);
+	byte* byte_data = new byte[data_size];
 	for (int i = 0; i < data_size; i++)
 	{
-		data[i] = i;
+		byte_data[i] = (byte)data[i];
 	}
-	kz.Encrypt(data, data_size);
+	kz.Encrypt(byte_data, data_size);
     return 0;
 }
 
