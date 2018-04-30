@@ -358,9 +358,6 @@ block_t* Kuznechik::F(block_t k, block_t a_1, block_t a_0)
 	{
 		lsx[i] ^= a_0[i];
 	}
-
-	//block_t f[2] = { X(lsx,a_0),a_1 };
-	//block_t f = X(lsx, a_1);
 	block_t f[2] = { lsx,a_1 };
 	return f;
 }
@@ -446,7 +443,6 @@ block_t Kuznechik::L_inv(block_t a)
 }
 
 
-
 block_t Kuznechik::EncryptBlock(block_t data, key_t key)
 {
 	throw std::runtime_error("Not implemented");
@@ -475,8 +471,6 @@ Kuznechik::Kuznechik(key_t master_key)
 		first_gamma[i] = rand_byte;
 	}
 }
-
-
 
 void kuz::Kuznechik::LoadKeys()
 {
