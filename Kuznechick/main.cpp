@@ -34,7 +34,18 @@ int main()
 	{
 		byte_data[i] = (byte)data[i];
 	}
-	kz.Encrypt(byte_data, data_size);
+	block_t block_1;
+	//block_1.fill(200);
+	for (int i = 0; i < block_1.size(); i++)
+	{
+		block_1[i] = i;
+	}
+	block_t rb = kz.R(block_1);
+	block_t rb2 = kz.R_inv(rb);
+	block_t lb=kz.L(block_1);
+	block_t lb2 = kz.L_inv(lb);
+	byte* enc_data=kz.Encrypt(byte_data, data_size);
+	byte* dec_data = kz.Decrypt(enc_data, data_size);
     return 0;
 }
 

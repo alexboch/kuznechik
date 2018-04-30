@@ -191,7 +191,7 @@ byte* Kuznechik::Encrypt(byte* data, int dataLength)
 	{
 		for (int j = 0; j < BLOCK_SIZE; j++)
 		{
-			data_blocks[i][j] ^= _gamma_blocks[i][j];
+			//data_blocks[i][j] ^= _gamma_blocks[i][j];
 		}
 	}
 	byte* encrypted_data = new byte[dataLength];
@@ -202,10 +202,6 @@ byte* Kuznechik::Encrypt(byte* data, int dataLength)
 		for (int k = 1; k < NUM_KEYS - 1; k++)
 		{
 			lsx = LSX(keys[k], lsx);
-
-			/*block_t x = X(_key_pairs[i][j], data_blocks[i]);
-			block_t sx = S(x);
-			block_t lsx = L(sx);*/
 		}
 		block_t enc_block = X(keys[NUM_KEYS - 1], lsx);
 		for (int j = 0; j < BLOCK_SIZE; j++)
@@ -237,7 +233,30 @@ byte * kuz::Kuznechik::Decrypt(byte * data, int dataLength)
 			data_blocks[block_index][BLOCK_SIZE - j - 1] = data[i + j];
 		}
 	}
+	vector<block_t> decrypted_blocks;
+	for (int i = 0; i < blocks_num; i++)
+	{
+		block_t block = data_blocks[i];
 
+		block_t x = X(keys[NUM_KEYS-1], block);
+		block_t li = L_inv(x);
+		block_t si = S_inv(li);
+		/*Обратные преобразования для каждого блока*/
+		for (int j = NUM_KEYS - 2; j > 0; j--)
+		{
+			x = X(keys[j], si);
+			li = L_inv(x);
+			si = S_inv(li);
+		}
+		block_t dec_block = X(keys[0], si);
+		decrypted_blocks.push_back(dec_block);
+	}
+	/*Обратное гаммирование*/
+	for (int i = 0; i < blocks_num; i++)
+	{
+		decrypted_blocks[i] = X(decrypted_blocks[i], _gamma_blocks[i]);
+	}
+	return NULL;
 }
 
 
@@ -360,17 +379,59 @@ block_t Kuznechik::S_inv(block_t a)
 	return s_inv;
 }
 
+
 block_t Kuznechik::R(block_t a)
 {
 	block_t r;
 	byte a_15 = 0;
-	for (int i = 15; i >= 1; i--)
+	//for (int i = 15; i >= 1; i--)
+	//{
+	//	r[i - 1] = a[i];//
+	//	a_15 ^= GF_mul(a[i], l_vec[i]);
+	//}
+	/*for (int i = 15; i >= 1; i--)
 	{
-		r[i - 1] = a[i];//
+		r[i] = a[i];
 		a_15 ^= GF_mul(a[i], l_vec[i]);
+	}*/
+	for (int i = 0; i < 15; i++)
+	{
+		r[i] = a[i+1];
+		//a_15 ^= GF_mul(a[i], l_vec[i]);
 	}
+	for (int i = 15,j=0; i >= 0; i--,j++)
+	{
+		a_15 ^= GF_mul(a[i], l_vec[j]);
+	}
+	
 	r[BLOCK_SIZE - 1] = a_15;//рез-т сложения в последний байт
 	return r;
+}
+
+block_t Kuznechik::R_inv(block_t a)
+{
+	int i;
+	byte a_0;
+	//a_0 = a[15];
+	a_0 = 0;
+	block_t r_inv;
+	//for (i = 1; i < 16; i++)
+	//{
+	//	r_inv[i] = a[i - 1];// Двигаем все на старые места
+	//	a_0 ^= GF_mul(a[i], l_vec[i]);
+	//}
+	for (int i = 0; i < 15; i++)
+	{
+		r_inv[i+1] = a[i];
+	}
+	a_0 = a[15];
+	for (int i = 14,j=0; i >= 0; i--,j++)
+	{
+		a_0 ^= GF_mul(a[i], l_vec[j]);
+	}
+	//a_0 ^= GF_mul(a[15], l_vec[0]);
+	r_inv[0] = a_0;
+	return r_inv;
 }
 
 block_t Kuznechik::L(block_t a)
@@ -393,20 +454,7 @@ block_t Kuznechik::L_inv(block_t a)
 	return l_inv;
 }
 
-block_t Kuznechik::R_inv(block_t a)
-{
-	int i;
-	uint8_t a_0;
-	a_0 = a[15];
-	block_t r_inv;
-	for (i = 0; i < 16; i++)
-	{
-		r_inv[i] = a[i - 1];// Двигаем все на старые места
-		a_0 ^= GF_mul(a[i], l_vec[i]);
-	}
-	a[0] = a_0;
-	return r_inv;
-}
+
 
 block_t Kuznechik::EncryptBlock(block_t data, key_t key)
 {
