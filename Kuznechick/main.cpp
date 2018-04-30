@@ -44,6 +44,8 @@ int main()
 	block_t rb2 = kz.R_inv(rb);
 	block_t lb=kz.L(block_1);
 	block_t lb2 = kz.L_inv(lb);
+	block_t s1 = kz.S(block_1);
+	block_t s2 = kz.S_inv(s1);
 	byte* enc_data=kz.Encrypt(byte_data, data_size);
 	byte* dec_data = kz.Decrypt(enc_data, data_size);
     return 0;

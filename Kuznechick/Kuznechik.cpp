@@ -165,35 +165,37 @@ byte* Kuznechik::Encrypt(byte* data, int dataLength)
 	}
 	block_t gamma_block;//С ним будет ксориться блок данны
 	gamma_block.fill(0);
-	/*Гаммирование*/
-	//uint32_t n = dis(gen)<<128;//первая половина--128-битное случайное число
-	//Заполнить первые 64 бита(8 байт)
-
-	for (int i = 0; i < BLOCK_SIZE / 2; i++)
-	{
-		byte rand_byte = dis(gen);
-		gamma_block[i] = rand_byte;
-	}
-
-	_gamma_blocks.push_back(gamma_block);
-	for (int i = 0; i < blocks_num - 1; i++)
-	{
-		for (int j = 0; j < BLOCK_SIZE; j++)
-		{
-			data_blocks[i][j] ^= gamma_block[j];
-		}
-		gamma_block = Increment(gamma_block);
-		_gamma_blocks.push_back(gamma_block);//Запомнить, чтобы потом расшифровать
-	}
-
-	/*Поксорить входные блоки с гамма-блоками*/
-	for (int i = 0; i < blocks_num; i++)
-	{
-		for (int j = 0; j < BLOCK_SIZE; j++)
-		{
-			//data_blocks[i][j] ^= _gamma_blocks[i][j];
-		}
-	}
+	
+//#pragma region Гаммирование
+//	//uint32_t n = dis(gen)<<128;//первая половина--128-битное случайное число
+//	//Заполнить первые 64 бита(8 байт)
+//
+//	for (int i = 0; i < BLOCK_SIZE / 2; i++)
+//	{
+//		byte rand_byte = dis(gen);
+//		gamma_block[i] = rand_byte;
+//	}
+//
+//	_gamma_blocks.push_back(gamma_block);
+//	for (int i = 0; i < blocks_num - 1; i++)
+//	{
+//		for (int j = 0; j < BLOCK_SIZE; j++)
+//		{
+//			data_blocks[i][j] ^= gamma_block[j];
+//		}
+//		gamma_block = Increment(gamma_block);
+//		_gamma_blocks.push_back(gamma_block);//Запомнить, чтобы потом расшифровать
+//	}
+//
+//	/*Поксорить входные блоки с гамма-блоками*/
+//	for (int i = 0; i < blocks_num; i++)
+//	{
+//		for (int j = 0; j < BLOCK_SIZE; j++)
+//		{
+//			//data_blocks[i][j] ^= _gamma_blocks[i][j];
+//		}
+//	}
+//#pragma endregion
 	byte* encrypted_data = new byte[dataLength];
 	for (int i = 0; i < blocks_num; i++)
 	{
@@ -204,6 +206,7 @@ byte* Kuznechik::Encrypt(byte* data, int dataLength)
 			lsx = LSX(keys[k], lsx);
 		}
 		block_t enc_block = X(keys[NUM_KEYS - 1], lsx);
+
 		for (int j = 0; j < BLOCK_SIZE; j++)
 		{
 			encrypted_data[i*BLOCK_SIZE + j] = enc_block[j];
@@ -230,7 +233,7 @@ byte * kuz::Kuznechik::Decrypt(byte * data, int dataLength)
 
 		for (int j = 0; j < BLOCK_SIZE; j++)
 		{
-			data_blocks[block_index][BLOCK_SIZE - j - 1] = data[i + j];
+			data_blocks[block_index][j] = data[i + j];
 		}
 	}
 	vector<block_t> decrypted_blocks;
