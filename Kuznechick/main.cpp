@@ -57,7 +57,7 @@ int main()
 	//delete[] enc_data;
 	//delete[] dec_data;
     
-	 vector<char> v=FileHelper::ReadAllBytes("ReadMe.txt");
+	 vector<char> v=FileHelper::ReadAllBytes("Lenna.png");
 	  char* chars=&v[0];
 	  byte* file_data = reinterpret_cast<unsigned char*>(chars);
 	 /*byte* file_data = new byte[v.size()];
@@ -69,7 +69,7 @@ int main()
 	 vector<byte> enc_data_file = kz.Encrypt(file_data, v.size());
 	 byte* dec_data_file = kz.Decrypt(enc_data_file, v.size());
 	 char* write_data = reinterpret_cast<char*>(dec_data_file);
-	 FileHelper::WriteBytes("Decrypted.txt", write_data, v.size());
+	 FileHelper::WriteBytes("Decrypted.png", write_data, v.size());
 	return 0;
 }
 

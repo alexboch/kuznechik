@@ -216,7 +216,6 @@ vector<byte> Kuznechik::Encrypt(byte* data, int dataLength)
 			lsx = LSX(keys[k], lsx);
 		}
 		block_t enc_block = X(keys[NUM_KEYS - 1], lsx);
-		std::cout << i;
 		for (int j = 0; j < BLOCK_SIZE; j++)
 		{
 			encrypted_data[i*BLOCK_SIZE + j] = enc_block[j];
