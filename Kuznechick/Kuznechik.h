@@ -3,6 +3,7 @@
 #include <array>
 #include <random>
 #include <exception>
+#include <iostream>
 namespace kuz {
 	typedef  unsigned char byte;
 	using namespace std;
@@ -21,8 +22,8 @@ namespace kuz {
 		array<block_t, NUM_KEYS> keys;
 		block_t GetBlocks(byte* data);
 	public:
-		byte* Encrypt(byte* data, int dataLength);
-		byte* Decrypt(byte* data, int dataLength);
+		vector<byte> Encrypt(byte* data, int dataLength);
+		byte* Decrypt(vector<byte> data, int dataLength);
 		vector<key_pair> GetRoundKeys(key_t k);
 		block_t X(block_t k, block_t a);
 		block_t* F(block_t k, block_t a_1, block_t a_0);

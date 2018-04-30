@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "Kuznechik.h"
+#include "FileHelper.h"
 #include <iostream>
 #include <random>
 using namespace kuz;
@@ -27,7 +28,7 @@ int main()
 	key_t master_key=GenerateMasterKey();
 	Kuznechik kz(master_key);
 	
-	char* data = "A short test message";
+	char* data = "A short test message A short test message A short test message";
 	int data_size = strlen(data);
 	byte* byte_data = new byte[data_size];
 	for (int i = 0; i < data_size; i++)
@@ -46,11 +47,29 @@ int main()
 	block_t lb2 = kz.L_inv(lb);
 	block_t s1 = kz.S(block_1);
 	block_t s2 = kz.S_inv(s1);
-	byte* enc_data=kz.Encrypt(byte_data, data_size);
-	byte* dec_data = kz.Decrypt(enc_data, data_size);
+	vector<byte> enc_vec = kz.Encrypt(byte_data, data_size);
+	
+	byte* dec_data = kz.Decrypt(enc_vec, data_size);
 
-	delete[] enc_data;
-	delete[] dec_data;
-    return 0;
+
+
+
+	//delete[] enc_data;
+	//delete[] dec_data;
+    
+	 vector<char> v=FileHelper::ReadAllBytes("ReadMe.txt");
+	  char* chars=&v[0];
+	  byte* file_data = reinterpret_cast<unsigned char*>(chars);
+	 /*byte* file_data = new byte[v.size()];
+	 for (int i = 0; i < v.size(); i++)
+	 {
+		 file_data[i] = v[i];
+	 }*/
+
+	 vector<byte> enc_data_file = kz.Encrypt(file_data, v.size());
+	 byte* dec_data_file = kz.Decrypt(enc_data_file, v.size());
+	 char* write_data = reinterpret_cast<char*>(dec_data_file);
+	 FileHelper::WriteBytes("Decrypted.txt", write_data, v.size());
+	return 0;
 }
 
