@@ -170,29 +170,15 @@ vector<byte> Kuznechik::Encrypt(byte* data, int dataLength)
 		}
 
 	}
-	block_t gamma_block;//С ним будет ксориться блок данны
-	gamma_block.fill(0);
+	block_t gamma_block=first_gamma;//С ним будет ксориться блок данны
+	//gamma_block.fill(0);
 	
 #pragma region Гаммирование
-	//uint32_t n = dis(gen)<<128;//первая половина--128-битное случайное число
-	//Заполнить первые 64 бита(8 байт)
 
-	for (int i = 0; i < BLOCK_SIZE / 2; i++)
-	{
-		byte rand_byte = dis(gen);
-		gamma_block[i] = rand_byte;
-	}
-
-	
 	for (int i = 0; i < blocks_num; i++)
 	{
 		_gamma_blocks.push_back(gamma_block);
-		//for (int j = 0; j < BLOCK_SIZE; j++)
-		//{
-		//	//data_blocks[i][j] ^= gamma_block[j];
-		//}
 		gamma_block = Increment(gamma_block);
-		//_gamma_blocks.push_back(gamma_block);//Запомнить, чтобы потом расшифровать
 	}
 
 	/*Поксорить входные блоки с гамма-блоками*/
@@ -477,7 +463,45 @@ Kuznechik::Kuznechik(key_t master_key)
 		keys[j] = _key_pairs[i][0];
 		keys[j + 1] = _key_pairs[i][1];
 	}
+	int max_val = 255;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> dis(0, max_val);
+	/*Сгенерировать блок гаммирования*/
+	first_gamma.fill(0);
+	for (int i = 0; i < BLOCK_SIZE / 2; i++)
+	{
+		byte rand_byte = dis(gen);
+		first_gamma[i] = rand_byte;
+	}
+}
 
+
+
+void kuz::Kuznechik::LoadKeys()
+{
+	const char* keys_path = "keys";
+	vector<char> data=FileHelper::ReadAllBytes(keys_path);
+	char* chars = &data[0];
+	byte* bytes = reinterpret_cast<byte*>(chars);
+	int j = 0;
+	
+	for (int i = 0,j=0; i < NUM_KEYS; i++)//загрузить 10 раундовых улючей
+	{
+		block_t round_key;
+		for (int k = 0; k < BLOCK_SIZE; k++)
+		{
+			round_key[k] = bytes[i*BLOCK_SIZE + k];
+		}
+		j += BLOCK_SIZE;
+	}
+	block_t first_gamma;
+	//Загрузить 1-ю гамму
+	for (int k = j,l=0; k < (j + BLOCK_SIZE); k++,l++)
+	{
+		first_gamma[l] = bytes[k];
+	}
+	
 }
 
 Kuznechik::~Kuznechik()

@@ -18,6 +18,8 @@ public:
 			throw runtime_error("Error opening file stream");
 		}
 		out.write(bytes, num_bytes);
+		out.flush();
+		out.close();
 	}
 
 	static std::vector<char> ReadAllBytes(const char* path)
@@ -33,7 +35,7 @@ public:
 
 		ifs.seekg(0, ios::beg);
 		ifs.read(&result[0], pos);
-
+		ifs.close();
 		return result;
 	}
 };

@@ -4,6 +4,7 @@
 #include <random>
 #include <exception>
 #include <iostream>
+#include "FileHelper.h"
 namespace kuz {
 	typedef  unsigned char byte;
 	using namespace std;
@@ -16,8 +17,9 @@ namespace kuz {
 	class Kuznechik
 	{
 	private:
-
+		block_t first_gamma;
 		vector<block_t> _gamma_blocks;
+		bool _first_gamma_initialized;
 		vector<key_pair> _key_pairs;
 		array<block_t, NUM_KEYS> keys;
 		block_t GetBlocks(byte* data);
@@ -28,6 +30,9 @@ namespace kuz {
 		block_t X(block_t k, block_t a);
 		block_t* F(block_t k, block_t a_1, block_t a_0);
 		Kuznechik(key_t master_key);
+		void LoadKeys();
+		void SaveKeys();
+		Kuznechik();
 		block_t EncryptBlock(block_t data, key_t key);
 		block_t R_inv(block_t a);
 		block_t L_inv(block_t a);
