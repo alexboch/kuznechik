@@ -150,15 +150,16 @@ byte* Kuznechik::Encrypt(byte* data, int dataLength)
 		{
 			for (int j = 0; j < BLOCK_SIZE; j++)
 			{
-				data_blocks[block_index][BLOCK_SIZE - j - 1] = data[i + j];
+				data_blocks[block_index][j] = data[i + j];
 			}
 		}
 		else//Если кол-во байт не кратно размеру блока, то взять остаток и дополнить нулями
 		{
 			data_blocks[block_index].fill(0);//заполнить нулями
-			for (int k = BLOCK_SIZE - 1, k1 = 0; k >= BLOCK_SIZE - bytes_left; k--, k1++)
+			//for (int k = BLOCK_SIZE - 1, k1 = 0; k >= BLOCK_SIZE - bytes_left; k--, k1++)
+			for(int j=0;j<bytes_left;j++)
 			{
-				data_blocks[block_index][k] = data[dataLength - k1 - 1];
+				data_blocks[block_index][j] = data[i+j];
 			}
 		}
 
